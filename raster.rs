@@ -1,12 +1,3 @@
-//! Relleno de triángulos: coordenadas baricéntricas y líneas horizontales.
-//!
-//! Regla de cobertura común a ambos algoritmos (convención "top-left"):
-//! un píxel (x, y) pertenece al triángulo si su centro (x + 0.5, y + 0.5)
-//! está estrictamente dentro, o sobre una arista superior o izquierda.
-//! Las aristas inferiores y derechas no se incluyen, así dos triángulos que
-//! comparten una arista no generan fragmentos duplicados ni dejan huecos.
-//! El eje Y crece hacia abajo (como en el framebuffer).
-
 #[derive(Clone, Copy, Debug)]
 pub struct Vec2 {
     pub x: f64,
@@ -37,8 +28,7 @@ pub type Triangle = [Vec2; 3];
 
 const EPS: f64 = 1e-9;
 
-/// Rasteriza todos los triángulos con el modo indicado.
-/// Solo se generan fragmentos dentro del framebuffer (width x height).
+
 pub fn rasterize(
     triangles: &[Triangle],
     mode: TriangleMode,
@@ -99,14 +89,11 @@ pub fn triangle_wireframe(a: Vec2, b: Vec2, c: Vec2, width: i32, height: i32, co
     out
 }
 
-/// Función de arista: doble del área con signo del triángulo (a, b, p).
 #[inline]
 fn edge(a: Vec2, b: Vec2, p: Vec2) -> f64 {
     (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
 }
 
-/// Una arista a->b (con área total positiva) es "top-left" si es horizontal
-/// con el interior debajo, o si sube en pantalla (interior a su derecha).
 #[inline]
 fn is_top_left(a: Vec2, b: Vec2) -> bool {
     let dx = b.x - a.x;
@@ -114,7 +101,6 @@ fn is_top_left(a: Vec2, b: Vec2) -> bool {
     (dy == 0.0 && dx > 0.0) || dy < 0.0
 }
 
-/// Algoritmo 1: coordenadas baricéntricas sobre el rectángulo envolvente.
 #[inline(never)]
 pub fn triangle_barycentric(a: Vec2, b: Vec2, mut c: Vec2, width: i32, height: i32, color: u32) -> Vec<Fragment> {
     let mut b = b;
@@ -148,8 +134,6 @@ pub fn triangle_barycentric(a: Vec2, b: Vec2, mut c: Vec2, width: i32, height: i
                 && (w1 > 0.0 || (w1 == 0.0 && tl1))
                 && (w2 > 0.0 || (w2 == 0.0 && tl2));
             if inside {
-                // Aquí las coordenadas baricéntricas serían (w0/area, w1/area, w2/area)
-                // para interpolar atributos más adelante.
                 let _ = area;
                 out.push(Fragment { x, y, color });
             }
@@ -158,12 +142,7 @@ pub fn triangle_barycentric(a: Vec2, b: Vec2, mut c: Vec2, width: i32, height: i
     out
 }
 
-/// Algoritmo 2: una fila a la vez, intersectando aristas con y = fila + 0.5.
-///
-/// Regla de aristas: una arista cruza la fila si lo.y <= yc < hi.y (las
-/// horizontales nunca cruzan; un vértice exactamente en la fila cuenta solo
-/// para la arista que parte de él hacia abajo). En x, el tramo es [xa, xb):
-/// incluye el extremo izquierdo y excluye el derecho.
+
 #[inline(never)]
 pub fn triangle_scanline(a: Vec2, b: Vec2, c: Vec2, width: i32, height: i32, color: u32) -> Vec<Fragment> {
     if edge(a, b, c) == 0.0 {
